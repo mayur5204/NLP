@@ -1,0 +1,124 @@
+"""
+NLP Practical 04: Transformer Architecture from Scratch
+=========================================================
+Covers: Positional Encoding, Scaled Dot-Product Attention,
+        Multi-Head Attention, Feed Forward, Encoder Layer, Full Transformer
+"""
+
+import torch
+import torch.nn as nn
+import math
+
+# ---- 1. Positional Encoding ----
+class SinusoidalPositionEncoding(nn.Module):
+    def __init__(self, embed_dim, max_seq_len=200):
+        super().__init__()
+        pos_matrix = torch.zeros(max_seq_len, embed_dim)
+        positions = torch.arange(0, max_seq_len).unsqueeze(1).float()
+        denominator = torch.exp(
+            torch.arange(0, embed_dim, 2).float() * (-math.log(10000.0) / embed_dim)
+        )
+        pos_matrix[:, 0::2] = torch.sin(positions * denominator)
+        pos_matrix[:, 1::2] = torch.cos(positions * denominator)
+        self.register_buffer('pos_matrix', pos_matrix.unsqueeze(0))
+
+    def forward(self, x):
+        return x + self.pos_matrix[:, :x.size(1)]
+
+# ---- 2. Multi-Head Self-Attention ----
+class MultiHeadSelfAttention(nn.Module):
+    def __init__(self, embed_dim, heads):
+        super().__init__()
+        assert embed_dim % heads == 0, "embed_dim must be divisible by heads"
+        self.embed_dim = embed_dim
+        self.heads = heads
+        self.head_dim = embed_dim // heads
+
+        self.query_proj = nn.Linear(embed_dim, embed_dim)
+        self.key_proj = nn.Linear(embed_dim, embed_dim)
+        self.value_proj = nn.Linear(embed_dim, embed_dim)
+        self.output_proj = nn.Linear(embed_dim, embed_dim)
+
+    def reshape_for_heads(self, tensor, batch):
+        return tensor.view(batch, -1, self.heads, self.head_dim).transpose(1, 2)
+
+    def forward(self, query, key, value):
+        batch = query.size(0)
+        Q = self.reshape_for_heads(self.query_proj(query), batch)
+        K = self.reshape_for_heads(self.key_proj(key), batch)
+        V = self.reshape_for_heads(self.value_proj(value), batch)
+
+        scale = math.sqrt(self.head_dim)
+        attn_weights = torch.matmul(Q, K.transpose(-2, -1)) / scale
+        attn_probs = torch.softmax(attn_weights, dim=-1)
+        context = torch.matmul(attn_probs, V)
+
+        context = context.transpose(1, 2).contiguous().view(batch, -1, self.embed_dim)
+        return self.output_proj(context)
+
+# ---- 3. Position-wise Feed Forward Network ----
+class PositionwiseFFN(nn.Module):
+    def __init__(self, embed_dim, hidden_dim, dropout=0.1):
+        super().__init__()
+        self.layers = nn.Sequential(
+            nn.Linear(embed_dim, hidden_dim),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim, embed_dim)
+        )
+
+    def forward(self, x):
+        return self.layers(x)
+
+# ---- 4. Transformer Encoder Block ----
+class TransformerBlock(nn.Module):
+    def __init__(self, embed_dim, heads, ff_hidden, dropout=0.1):
+        super().__init__()
+        self.self_attn = MultiHeadSelfAttention(embed_dim, heads)
+        self.ffn = PositionwiseFFN(embed_dim, ff_hidden, dropout)
+        self.layernorm1 = nn.LayerNorm(embed_dim)
+        self.layernorm2 = nn.LayerNorm(embed_dim)
+        self.drop1 = nn.Dropout(dropout)
+        self.drop2 = nn.Dropout(dropout)
+
+    def forward(self, x):
+        attn_out = self.self_attn(x, x, x)
+        x = self.layernorm1(x + self.drop1(attn_out))
+        ff_out = self.ffn(x)
+        x = self.layernorm2(x + self.drop2(ff_out))
+        return x
+
+# ---- 5. Complete Transformer Encoder ----
+class TransformerEncoder(nn.Module):
+    def __init__(self, vocab_size, embed_dim, heads, ff_hidden, num_blocks, max_seq_len=200):
+        super().__init__()
+        self.token_embed = nn.Embedding(vocab_size, embed_dim)
+        self.pos_encode = SinusoidalPositionEncoding(embed_dim, max_seq_len)
+        self.blocks = nn.ModuleList([
+            TransformerBlock(embed_dim, heads, ff_hidden)
+            for _ in range(num_blocks)
+        ])
+        self.classifier = nn.Linear(embed_dim, vocab_size)
+
+    def forward(self, x):
+        x = self.token_embed(x)
+        x = self.pos_encode(x)
+        for block in self.blocks:
+            x = block(x)
+        return self.classifier(x)
+
+# ---- 6. Test Run ----
+if __name__ == "__main__":
+    VOCAB = 500
+    EMBED = 128
+    HEADS = 8
+    FF_DIM = 512
+    BLOCKS = 3
+
+    transformer = TransformerEncoder(VOCAB, EMBED, HEADS, FF_DIM, BLOCKS)
+    test_input = torch.randint(0, VOCAB, (4, 12))  # batch=4, seq_len=12
+    test_output = transformer(test_input)
+
+    print(f"Input shape  : {test_input.shape}")
+    print(f"Output shape : {test_output.shape}")
+    print(f"Parameters   : {sum(p.numel() for p in transformer.parameters()):,}")

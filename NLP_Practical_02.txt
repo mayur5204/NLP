@@ -1,0 +1,71 @@
+"""
+NLP Practical 02: Text Representation Techniques
+==================================================
+Covers: Bag of Words, Normalized Count, TF-IDF, Word2Vec
+"""
+
+# !pip install nltk scikit-learn gensim
+
+import nltk
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+from gensim.models import Word2Vec
+from nltk.tokenize import word_tokenize
+import numpy as np
+
+nltk.download('punkt', quiet=True)
+nltk.download('punkt_tab', quiet=True)
+
+# ---- Dataset ----
+documents = [
+    "Deep learning powers modern NLP systems",
+    "NLP systems process human language effectively",
+    "Transformers revolutionized deep learning research"
+]
+
+# ---- 1. Bag of Words (Count Vectorizer) ----
+print("=" * 50)
+print("1. BAG OF WORDS")
+print("=" * 50)
+count_vec = CountVectorizer()
+bow = count_vec.fit_transform(documents)
+feature_names = count_vec.get_feature_names_out()
+bow_array = bow.toarray()
+print("Features:", feature_names)
+print("Matrix:\n", bow_array)
+
+# ---- 2. Normalized Term Frequency ----
+print("\n" + "=" * 50)
+print("2. NORMALIZED TERM FREQUENCY")
+print("=" * 50)
+row_sums = bow_array.sum(axis=1, keepdims=True)
+tf_normalized = bow_array / row_sums
+print("TF Matrix:\n", np.round(tf_normalized, 4))
+
+# ---- 3. TF-IDF ----
+print("\n" + "=" * 50)
+print("3. TF-IDF")
+print("=" * 50)
+tfidf_vec = TfidfVectorizer()
+tfidf_result = tfidf_vec.fit_transform(documents)
+print("Features:", tfidf_vec.get_feature_names_out())
+print("TF-IDF Matrix:\n", np.round(tfidf_result.toarray(), 4))
+
+# ---- 4. Word2Vec Embeddings ----
+print("\n" + "=" * 50)
+print("4. WORD2VEC")
+print("=" * 50)
+tokenized_docs = [word_tokenize(doc.lower()) for doc in documents]
+w2v_model = Word2Vec(
+    sentences=tokenized_docs,
+    vector_size=64,
+    window=4,
+    min_count=1,
+    sg=1,         # Skip-gram
+    epochs=100
+)
+
+target_word = "learning"
+print(f"\nEmbedding for '{target_word}':")
+print(w2v_model.wv[target_word][:10], "...")  # Show first 10 dims
+print(f"\nMost similar to '{target_word}':")
+print(w2v_model.wv.most_similar(target_word, topn=3))

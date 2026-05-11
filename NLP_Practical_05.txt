@@ -1,0 +1,72 @@
+"""
+NLP Practical 05: Morphological Analysis
+==========================================
+Covers: Inflectional & Derivational Morphology Rules,
+        Porter Stemming, WordNet Lemmatization
+"""
+
+import nltk
+from nltk.stem import PorterStemmer, WordNetLemmatizer
+
+nltk.download('wordnet', quiet=True)
+nltk.download('omw-1.4', quiet=True)
+
+stemmer = PorterStemmer()
+lemmatizer = WordNetLemmatizer()
+
+# ---- 1. Morphological Transformation Rules ----
+def apply_morphology(word):
+    """Apply common English morphological rules to a base word."""
+    transformations = []
+
+    # Prefixing: add 'un-'
+    transformations.append(("Prefix 'un-'", word, "un" + word))
+
+    # Prefixing: add 're-'
+    transformations.append(("Prefix 're-'", word, "re" + word))
+
+    # Suffix '-ing': drop silent 'e' if present
+    if word.endswith('e'):
+        derived = word[:-1] + "ing"
+        transformations.append(("Drop 'e' + '-ing'", word, derived))
+    else:
+        transformations.append(("Suffix '-ing'", word, word + "ing"))
+
+    # Suffix '-ness': change 'y' to 'i' if applicable
+    if word.endswith('y'):
+        derived = word[:-1] + "iness"
+        transformations.append(("'y' -> 'i' + '-ness'", word, derived))
+    else:
+        transformations.append(("Suffix '-ness'", word, word + "ness"))
+
+    # Suffix '-er'
+    transformations.append(("Suffix '-er'", word, word + "er"))
+
+    # Suffix '-ly'
+    transformations.append(("Suffix '-ly'", word, word + "ly"))
+
+    return transformations
+
+# ---- 2. Stemming and Lemmatization ----
+def analyze_word(word):
+    """Return the stem and lemma of a word."""
+    stem = stemmer.stem(word)
+    lemma = lemmatizer.lemmatize(word)
+    return stem, lemma
+
+# ---- 3. Main Execution ----
+test_words = ["happy", "running", "make", "beautiful"]
+
+for word in test_words:
+    print(f"\n{'=' * 45}")
+    print(f"  Word: '{word}'")
+    print(f"{'=' * 45}")
+
+    print("\n  Morphological Rules:")
+    rules = apply_morphology(word)
+    for rule_name, base, result in rules:
+        print(f"    {rule_name:25s} | {base:12s} -> {result}")
+
+    stem, lemma = analyze_word(word)
+    print(f"\n  Stemmed      : {stem}")
+    print(f"  Lemmatized   : {lemma}")

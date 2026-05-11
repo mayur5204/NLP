@@ -1,0 +1,58 @@
+"""
+NLP Practical 01: Tokenization, Stemming, and Lemmatization
+============================================================
+Covers: Whitespace, Punctuation, Treebank, Tweet & MWE Tokenizers,
+        Porter Stemmer, Snowball Stemmer, WordNet Lemmatizer
+"""
+
+import nltk
+from nltk.tokenize import word_tokenize, TweetTokenizer, MWETokenizer, TreebankWordTokenizer
+from nltk.stem import PorterStemmer, SnowballStemmer, WordNetLemmatizer
+import string
+
+# Download NLTK resources
+nltk.download('punkt', quiet=True)
+nltk.download('punkt_tab', quiet=True)
+nltk.download('wordnet', quiet=True)
+nltk.download('omw-1.4', quiet=True)
+
+sentence = "Machine learning models are transforming healthcare! Let's explore NLP techniques :) #AI"
+
+# ---- Whitespace Tokenizer ----
+ws_tokens = sentence.split()
+print("1. Whitespace Tokens:", ws_tokens)
+
+# ---- Punctuation-based Tokenizer ----
+clean_tokens = [w.strip(string.punctuation) for w in ws_tokens if w.strip(string.punctuation)]
+print("2. Punctuation Tokens:", clean_tokens)
+
+# ---- Treebank Word Tokenizer ----
+tb_tokenizer = TreebankWordTokenizer()
+tb_tokens = tb_tokenizer.tokenize(sentence)
+print("3. Treebank Tokens:", tb_tokens)
+
+# ---- Tweet Tokenizer ----
+tw_tokenizer = TweetTokenizer()
+tw_tokens = tw_tokenizer.tokenize(sentence)
+print("4. Tweet Tokens:", tw_tokens)
+
+# ---- Multi-Word Expression Tokenizer ----
+mwe = MWETokenizer([('machine', 'learning'), ('NLP', 'techniques')])
+base_tokens = word_tokenize(sentence.lower())
+mwe_tokens = mwe.tokenize(base_tokens)
+print("5. MWE Tokens:", mwe_tokens)
+
+# ---- Porter Stemmer ----
+porter = PorterStemmer()
+porter_results = [porter.stem(tok) for tok in clean_tokens]
+print("6. Porter Stems:", porter_results)
+
+# ---- Snowball Stemmer ----
+snowball = SnowballStemmer("english")
+snowball_results = [snowball.stem(tok) for tok in clean_tokens]
+print("7. Snowball Stems:", snowball_results)
+
+# ---- WordNet Lemmatizer ----
+wnl = WordNetLemmatizer()
+lemmas = [wnl.lemmatize(tok) for tok in clean_tokens]
+print("8. Lemmatized:", lemmas)

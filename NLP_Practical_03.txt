@@ -1,0 +1,74 @@
+"""
+NLP Practical 03: Text Preprocessing Pipeline
+===============================================
+Covers: Lowercasing, Punctuation Removal, Tokenization,
+        Stopword Removal, Lemmatization, Label Encoding, TF-IDF
+"""
+
+# !pip install nltk scikit-learn pandas
+
+import nltk
+import pandas as pd
+import string
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from sklearn.preprocessing import LabelEncoder
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+nltk.download('punkt', quiet=True)
+nltk.download('punkt_tab', quiet=True)
+nltk.download('stopwords', quiet=True)
+nltk.download('wordnet', quiet=True)
+nltk.download('omw-1.4', quiet=True)
+
+# ---- 1. Raw Dataset ----
+records = {
+    "review": [
+        "The movie was absolutely fantastic!",
+        "I found the plot quite boring and predictable.",
+        "Great performances by the lead actors in this film."
+    ],
+    "sentiment": ["positive", "negative", "positive"]
+}
+df = pd.DataFrame(records)
+print("Raw Data:\n", df)
+
+# ---- 2. Text Cleaning Function ----
+def preprocess(text):
+    text = text.lower()
+    text = text.translate(str.maketrans('', '', string.punctuation))
+    return word_tokenize(text)
+
+df['tokens'] = df['review'].apply(preprocess)
+
+# ---- 3. Stopword Filtering ----
+eng_stopwords = set(stopwords.words('english'))
+df['filtered'] = df['tokens'].apply(
+    lambda toks: [t for t in toks if t not in eng_stopwords]
+)
+
+# ---- 4. Lemmatization ----
+lem = WordNetLemmatizer()
+df['lemmatized'] = df['filtered'].apply(
+    lambda toks: [lem.lemmatize(t) for t in toks]
+)
+df['processed_text'] = df['lemmatized'].apply(lambda toks: " ".join(toks))
+
+# ---- 5. Label Encoding ----
+le = LabelEncoder()
+df['label_encoded'] = le.fit_transform(df['sentiment'])
+
+# ---- 6. TF-IDF Vectorization ----
+tfidf = TfidfVectorizer()
+tfidf_matrix = tfidf.fit_transform(df['processed_text'])
+tfidf_df = pd.DataFrame(
+    tfidf_matrix.toarray(),
+    columns=tfidf.get_feature_names_out()
+)
+
+# ---- 7. Display Results ----
+print("\nProcessed Data:")
+print(df[['review', 'processed_text', 'label_encoded']])
+print("\nTF-IDF Representation:")
+print(tfidf_df.round(4))
